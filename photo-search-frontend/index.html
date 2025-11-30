@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Photo Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #111827;
+      --accent: #f97316;
+      --accent-soft: rgba(249, 115, 22, 0.15);
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --border: #1f2933;
+      --radius-lg: 14px;
+      --radius-pill: 999px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin: 0 0 4px;
+    }
+
+    header p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-bottom: 16px;
+    }
+
+    .pill span.key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 0.7rem;
+      color: var(--muted);
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.8);
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .search-input-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      padding: 12px 14px 12px 40px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      outline: none;
+      font-size: 0.95rem;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.8);
+    }
+
+    .search-input-wrap input::placeholder {
+      color: var(--muted);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      padding: 11px 22px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(135deg, #f97316, #fb923c);
+      color: #111827;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(248, 113, 22, 0.35);
+      white-space: nowrap;
+    }
+
+    .subtext {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2.3fr) minmax(0, 1.7fr);
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 900px) {
+      .layout-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.9),
+        rgba(15, 23, 42, 0.96)
+      );
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.85);
+      padding: 16px 18px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-soft);
+      color: #fed7aa;
+      border: 1px solid rgba(249, 115, 22, 0.4);
+    }
+
+    .results-header {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .photo-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 180px;
+    }
+
+    .photo-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .photo-thumb {
+      width: 72px;
+      height: 72px;
+      border-radius: 12px;
+      background: #020617;
+      border: 1px solid #1f2933;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .photo-meta {
+      flex: 1;
+      font-size: 0.8rem;
+    }
+
+    .photo-meta div {
+      margin-bottom: 2px;
+    }
+
+    .photo-meta span.label {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: var(--muted);
+    }
+
+    .chip-small {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(31, 41, 55, 0.9);
+      color: var(--muted);
+    }
+
+    .upload-section h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .upload-section form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+
+    .upload-section label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .upload-section input[type="file"],
+    .upload-section input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .upload-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .upload-status {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .error {
+      color: #fecaca;
+      font-size: 0.8rem;
+    }
+
+    a {
+      color: #bae6fd;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="pill">
+        <span class="key">⌘</span>
+        <span>Type a label like <strong>cat</strong>, <strong>canine</strong>, <strong>puppy</strong>, etc.</span>
+      </div>
+      <h1>Photo Search</h1>
+      <p>Search photos by labels. You can also upload new photos and tag them with your own labels.</p>
+    </header>
+
+    <!-- Search bar -->
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Try queries like cat, canine, puppy, grass…"
+        />
+      </div>
+      <button id="search-btn" class="btn-primary">Search</button>
+    </div>
+    <div class="subtext">
+      Press <strong>Enter</strong> to search.
+    </div>
+
+    <div class="layout-grid">
+      <!-- Left: Search results -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Search results</div>
+          <span class="badge">Live data</span>
+        </div>
+        <div class="results-header" id="results-header">
+          Type a query to see matching photos.
+        </div>
+        <div id="results" class="results-grid"></div>
+      </section>
+
+      <!-- Right: Upload + info -->
+      <section class="card upload-section">
+        <div class="card-header">
+          <div class="card-title">Upload a photo</div>
+          <span class="badge">Upload</span>
+        </div>
+
+        <!-- User-friendly instructions only -->
+        <p class="muted" style="margin-bottom: 12px;">
+          Choose a picture from your device and add a few labels (for example,
+          <code>cat</code>, <code>cute</code>, <code>pet</code>). After it uploads,
+          you can search using those labels.
+        </p>
+
+        <form id="upload-form">
+          <div>
+            <label for="file-input">Choose image file</label>
+            <input id="file-input" type="file" accept="image/*" required />
+          </div>
+
+          <div>
+            <label for="custom-labels">
+              Custom labels (comma-separated, e.g. <code>cat, cute, pet</code>)
+            </label>
+            <input
+              id="custom-labels"
+              type="text"
+              placeholder="canine, puppy, grass"
+            />
+          </div>
+
+          <div class="upload-actions">
+            <button type="submit" class="btn-primary">Upload</button>
+            <span id="upload-status" class="upload-status"></span>
+          </div>
+        </form>
+
+        <p class="muted" style="margin-top: 12px;">
+          After uploading, wait a few seconds and then try a search with one of your labels.
+        </p>
+      </section>
+    </div>
+
+    <p id="error-msg" class="error"></p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+version: 0.2
+
+env:
+  variables:
+    FRONTEND_BUCKET: "frontend-sakshi"
+phases:
+  install:
+    commands:
+      - echo "Installing AWS CLI (already available in CodeBuild image)"
+  build:
+    commands:
+      - echo "Syncing frontend to S3"
+      - aws s3 sync photo-search-frontend/ s3://$FRONTEND_BUCKET/ --delete
+artifacts:
+  files:
+    - '**/*'

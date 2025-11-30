@@ -2,8 +2,9 @@ version: 0.2
 
 env:
   variables:
-    INDEX_FUNC_NAME: "index-photos"
-    SEARCH_FUNC_NAME: "search-photos"
+    INDEX_FUNC_NAME: index-photos
+    SEARCH_FUNC_NAME: search-photos
+
 phases:
   install:
     commands:
@@ -15,19 +16,14 @@ phases:
     commands:
       - echo "Zipping Lambda functions"
       - cd photo-search-backend/index-photos
-      - zip -r ../index-photos.zip lambda_function.py
+      - zip -r ../../index-photos.zip .
       - cd ../search-photos
-      - zip -r ../search-photos.zip lambda_function.py
+      - zip -r ../../search-photos.zip .
+      - cd ../../
+
   post_build:
     commands:
       - echo "Updating Lambda functions"
-      - cd ..
-      - aws lambda update-function-code \
-          --function-name "$INDEX_FUNC_NAME" \
-          --zip-file fileb://index-photos.zip
-      - aws lambda update-function-code \
-          --function-name "$SEARCH_FUNC_NAME" \
-          --zip-file fileb://search-photos.zip
-artifacts:
-  files:
-    - '**/*'
+      - aws lambda update-function-code --function-name "$INDEX_FUNC_NAME" --zip-file fileb://index-photos.zip
+      - aws lambda update-function-code --function-name "$SEARCH_FUNC_NAME" --zip-file fileb://search-photos.zip
+

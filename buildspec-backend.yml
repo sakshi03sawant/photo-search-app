@@ -7,9 +7,10 @@ env:
 phases:
   install:
     commands:
-      - echo "Installing zip and AWS CLI (if needed)"
-      - apt-get update -y
-      - apt-get install -y zip
+      - echo "Installing zip (if needed)"
+      - yum update -y
+      - yum install -y zip
+
   build:
     commands:
       - echo "Zipping Lambda functions"

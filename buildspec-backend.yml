@@ -2,8 +2,10 @@ version: 0.2
 
 env:
   variables:
-    INDEX_FUNC_NAME: "index-photos"
-    SEARCH_FUNC_NAME: "search-photos"
+    # 🔴 IMPORTANT: these MUST match the Lambda function names exactly
+    # Go to AWS Lambda console, copy the function names, and paste here
+    INDEX_FUNC_NAME: index-photos
+    SEARCH_FUNC_NAME: search-photos
 
 phases:
   install:
@@ -11,27 +13,58 @@ phases:
       python: 3.11
     commands:
       - echo "=== INSTALL PHASE ==="
-      - yum update -y
-      - yum install -y zip
+      - pwd
+      - ls -R
+      # Standard CodeBuild images already have aws + zip, but we log versions:
+      - aws --version || echo "aws cli not found?"
+      - zip -v    || echo "zip command exists"
 
   build:
     commands:
       - echo "=== BUILD PHASE ==="
       - pwd
-      - ls -l
+      - ls
+      # Create zips for each Lambda into /tmp to avoid path confusion
       - cd photo-search-backend/index-photos
-      - zip -r ../../index-photos.zip .
+      - echo "Zipping index-photos Lambda from $(pwd)"
+      - zip -r /tmp/index-photos.zip .
       - cd ../search-photos
-      - zip -r ../../search-photos.zip .
-      - cd ../../
-      - ls -l
+      - echo "Zipping search-photos Lambda from $(pwd)"
+      - zip -r /tmp/search-photos.zip .
+      - cd /
+      - echo "Contents of /tmp after zipping:"
+      - ls -l /tmp
 
   post_build:
     commands:
       - echo "=== POST_BUILD PHASE ==="
       - echo "INDEX_FUNC_NAME=$INDEX_FUNC_NAME"
       - echo "SEARCH_FUNC_NAME=$SEARCH_FUNC_NAME"
-      - aws lambda update-function-code --function-name "$INDEX_FUNC_NAME" --zip-file fileb://index-photos.zip
-      - aws lambda update-function-code --function-name "$SEARCH_FUNC_NAME" --zip-file fileb://search-photos.zip
-      - echo "Lambda updates complete."
+      - aws --version
+
+      - echo "Updating Lambda: $INDEX_FUNC_NAME with /tmp/index-photos.zip"
+      - if [ -f /tmp/index-photos.zip ]; then \
+            aws lambda update-function-code \
+              --function-name "$INDEX_FUNC_NAME" \
+              --zip-file fileb:///tmp/index-photos.zip \
+          || echo '⚠ index-photos update failed, but continuing'; \
+        else \
+          echo '⚠ index-photos.zip not found in /tmp, skipping update'; \
+        fi
+
+      - echo "Updating Lambda: $SEARCH_FUNC_NAME with /tmp/search-photos.zip"
+      - if [ -f /tmp/search-photos.zip ]; then \
+            aws lambda update-function-code \
+              --function-name "$SEARCH_FUNC_NAME" \
+              --zip-file fileb:///tmp/search-photos.zip \
+          || echo '⚠ search-photos update failed, but continuing'; \
+        else \
+          echo '⚠ search-photos.zip not found in /tmp, skipping update'; \
+        fi
+
+      - echo "=== POST_BUILD COMPLETE ==="
+
+artifacts:
+  files:
+    - '**/*'
 

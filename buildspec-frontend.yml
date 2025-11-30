@@ -1,16 +1,24 @@
 version: 0.2
 
-env:
-  variables:
-    FRONTEND_BUCKET: "frontend-sakshi"
 phases:
   install:
+    runtime-versions:
+      nodejs: 18
     commands:
-      - echo "Installing AWS CLI (already available in CodeBuild image)"
+      - echo "Install phase - nothing special to install for frontend"
+
   build:
     commands:
-      - echo "Syncing frontend to S3"
-      - aws s3 sync photo-search-frontend/ s3://$FRONTEND_BUCKET/ --delete
+      - echo "Build phase - zipping frontend files"
+      - pwd
+      - ls
+      # Go into the frontend folder and zip everything
+      - cd photo-search-frontend
+      - zip -r ../photo-search-frontend.zip .
+      # Go back to repo root and list the zip
+      - cd ..
+      - ls -l
+
 artifacts:
   files:
-    - '**/*'
+    - photo-search-frontend.zip

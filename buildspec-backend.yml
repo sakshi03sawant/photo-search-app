@@ -2,28 +2,48 @@ version: 0.2
 
 env:
   variables:
-    INDEX_FUNC_NAME: index-photos
-    SEARCH_FUNC_NAME: search-photos
+    # Make sure these exactly match your Lambda function names
+    INDEX_FUNC_NAME: "index-photos"
+    SEARCH_FUNC_NAME: "search-photos"
 
 phases:
   install:
+    runtime-versions:
+      python: 3.11
     commands:
-      - echo "Installing zip (if needed)"
+      - echo "=== INSTALL PHASE ==="
+      - echo "Updating yum and installing zip"
       - yum update -y
       - yum install -y zip
 
   build:
     commands:
-      - echo "Zipping Lambda functions"
+      - echo "=== BUILD PHASE ==="
+      - echo "Current directory:"
+      - pwd
+      - echo "Listing files at repo root:"
+      - ls -l
+      - echo "Zipping Lambda functions from photo-search-backend/"
+      # Zip index-photos
       - cd photo-search-backend/index-photos
       - zip -r ../../index-photos.zip .
+      # Zip search-photos
       - cd ../search-photos
       - zip -r ../../search-photos.zip .
+      # Back to repo root
       - cd ../../
+      - echo "Zips created at repo root:"
+      - ls -l
 
   post_build:
     commands:
-      - echo "Updating Lambda functions"
+      - echo "=== POST_BUILD PHASE ==="
+      - echo "INDEX_FUNC_NAME is: $INDEX_FUNC_NAME"
+      - echo "SEARCH_FUNC_NAME is: $SEARCH_FUNC_NAME"
+      - echo "Files in current directory before Lambda update:"
+      - ls -l
+      - echo "Updating index-photos Lambda..."
       - aws lambda update-function-code --function-name "$INDEX_FUNC_NAME" --zip-file fileb://index-photos.zip
+      - echo "Updating search-photos Lambda..."
       - aws lambda update-function-code --function-name "$SEARCH_FUNC_NAME" --zip-file fileb://search-photos.zip
-
+      - echo "Lambda updates complete."

@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Photo search app - minimal stack for Assignment 3.
+  Creates S3 buckets (frontend + photos), two Lambdas, and an API Gateway
+  with /photos (PUT) and /search (GET) endpoints.
+
+Parameters:
+  PhotosBucketName:
+    Type: String
+    Default: photos-sakshi
+    Description: S3 bucket to store uploaded photos
+
+  FrontendBucketName:
+    Type: String
+    Default: frontend-sakshi
+    Description: S3 bucket for static website frontend
+
+  IndexFunctionName:
+    Type: String
+    Default: index-photos
+    Description: Lambda function name for indexing photos
+
+  SearchFunctionName:
+    Type: String
+    Default: search-photos
+    Description: Lambda function name for searching photos
+
+Resources:
+  #######################################################
+  # S3 BUCKETS
+  #######################################################
+  PhotosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref PhotosBucketName
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref FrontendBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPublicReadForWebsite
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+
+  #######################################################
+  # IAM ROLE FOR LAMBDAS
+  #######################################################
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "photo-search-lambda-role-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  #######################################################
+  # LAMBDAS
+  #######################################################
+  IndexPhotosFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref IndexFunctionName
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          PHOTOS_BUCKET: !Ref PhotosBucket
+      Code:
+        ZipFile: |
+          import json, os
+
+          def lambda_handler(event, context):
+              # Placeholder logic for CloudFormation template.
+              # Real assignment code can be added here later.
+              return {
+                  "statusCode": 200,
+                  "body": json.dumps({
+                      "message": "index-photos from CloudFormation",
+                      "bucket": os.getenv("PHOTOS_BUCKET")
+                  })
+              }
+
+  SearchPhotosFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref SearchFunctionName
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              query = None
+              if isinstance(event, dict):
+                  params = event.get("queryStringParameters") or {}
+                  query = params.get("q")
+              return {
+                  "statusCode": 200,
+                  "headers": {"Content-Type": "application/json"},
+                  "body": json.dumps({
+                      "message": "search-photos from CloudFormation",
+                      "query": query
+                  })
+              }
+
+  #######################################################
+  # API GATEWAY
+  #######################################################
+  PhotoSearchApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: photo-search-api
+      Description: Simple API with /photos and /search endpoints.
+
+  PhotosResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref PhotoSearchApi
+      ParentId: !GetAtt PhotoSearchApi.RootResourceId
+      PathPart: photos
+
+  SearchResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref PhotoSearchApi
+      ParentId: !GetAtt PhotoSearchApi.RootResourceId
+      PathPart: search
+
+  PhotosPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref PhotoSearchApi
+      ResourceId: !Ref PhotosResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IndexPhotosFunction.Arn}/invocations
+
+  SearchGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref PhotoSearchApi
+      ResourceId: !Ref SearchResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.querystring.q: false
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchPhotosFunction.Arn}/invocations
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - PhotosPutMethod
+      - SearchGetMethod
+    Properties:
+      RestApiId: !Ref PhotoSearchApi
+      StageName: prod
+
+  #######################################################
+  # LAMBDA INVOKE PERMISSIONS FOR API GATEWAY
+  #######################################################
+  IndexLambdaPermissionApiGw:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref IndexPhotosFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PhotoSearchApi}/*/PUT/photos
+
+  SearchLambdaPermissionApiGw:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SearchPhotosFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PhotoSearchApi}/*/GET/search
+
+Outputs:
+  FrontendWebsiteURL:
+    Description: Public URL for the static website hosted in the frontend bucket
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
+  ApiInvokeURL:
+    Description: Base invoke URL for the API Gateway stage
+    Value: !Sub "https://${PhotoSearchApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  PhotosBucketOut:
+    Description: Name of the photos storage bucket
+    Value: !Ref PhotosBucket
+
+  FrontendBucketOut:
+    Description: Name of the frontend bucket
+    Value: !Ref FrontendBucket
